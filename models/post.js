@@ -5,12 +5,12 @@ let post = new mongoose.Schema({
         type: String,
         required: true,
     },
-    content: {
+    content: { // This is your description field
         type: String,
     },
     imageUrl: {
         type: String,
-        required: true
+        required: true // Keeping this required as per your schema
     },
     communityId: {
         type: mongoose.Schema.Types.ObjectId,
@@ -29,6 +29,10 @@ let post = new mongoose.Schema({
     votes: {
         type: [String],
         default: []
+    },
+    lastEditedAt: { // New field for tracking edits
+        type: Date,
+        default: null // Will be updated when the post is edited
     }
 }, { timestamps: true });
 
