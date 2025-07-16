@@ -255,11 +255,342 @@ postRouter.delete('/delete/:postId', authenticateUser, async (req, res) => {
 });
 
 
-// --- EXISTING ROUTES (KEEP THEM AS IS) ---
-postRouter.get('/getCommunityPosts', async (req, res) => { /* ... existing code ... */ });
-postRouter.post('/getAllPosts', async (req, res) => { /* ... existing code ... */ });
-postRouter.get("/getPost", async (req, res) => { /* ... existing code ... */ });
-postRouter.get('/recent-posts', async (req, res) => { /* ... existing code ... */ });
-postRouter.post('/filterPosts', [ /* ... existing code ... */ ]);
+postRouter.get('/getCommunityPosts', async (req, res) => {
+
+try {
+
+const { q } = req.query
+
+if (!q) {
+
+return res.json({
+
+success: false,
+
+message: "Community ID is required"
+
+})
+
+}
+
+
+
+let postsArray = await Community.findById(q).select('posts -_id')
+
+
+
+if (!postsArray) {
+
+return res.json({
+
+success: false,
+
+message: "Community does not exist"
+
+})
+
+}
+
+
+
+let posts = await Post.find({ _id: { $in: postsArray.posts } }).populate({
+
+path: "authorId",
+
+select: "username imageUrl"
+
+})
+
+
+
+return res.json({
+
+success: true,
+
+posts
+
+})
+
+} catch (error) {
+
+console.log(error)
+
+return res.json({
+
+success: false,
+
+message: "Internal server error"
+
+})
+
+}
+
+})
+
+
+
+// , [
+
+// body("page").notEmpty().withMessage("Page is required"),
+
+// body("limit").notEmpty().withMessage("Limit is required")
+
+// ]
+
+
+
+postRouter.post('/getAllPosts', async (req, res) => {
+
+try {
+
+const { page, limit } = req.body
+
+let posts = await Post.find({}).populate({
+
+path: 'authorId',
+
+select: 'username imageUrl'
+
+}).skip(limit * page).limit(limit)
+
+
+
+if (!posts) {
+
+return res.json({
+
+success: false,
+
+message: "No posts available"
+
+})
+
+}
+
+
+
+const total = await Post.countDocuments()
+
+
+
+return res.json({
+
+success: true,
+
+posts,
+
+total
+
+})
+
+} catch (error) {
+
+return res.json({
+
+success: false,
+
+message: "Internal server error"
+
+})
+
+}
+
+})
+
+postRouter.get("/getPost", async (req, res) => {
+
+try {
+
+let { postId } = req.query;
+
+if (!postId) {
+
+return res.json({
+
+success: false,
+
+message: "Post Id is required"
+
+})
+
+}
+
+const post = await Post.findById(postId).select("-comments -updatedAt").populate({
+
+path: "authorId",
+
+select: "username imageUrl"
+
+})
+
+if (!post) {
+
+return res.json({
+
+success: false,
+
+message: "Post does not exist"
+
+})
+
+}
+
+
+
+return res.json({
+
+success: true,
+
+post
+
+})
+
+} catch (error) {
+
+return req.json({
+
+success: false,
+
+message: 'Internal server error'
+
+})
+
+}
+
+})
+
+
+
+postRouter.get('/recent-posts', async (req, res) => {
+
+try {
+
+const posts = await Post.find({}).populate({
+
+path: "authorId",
+
+select: "username imageUrl"
+
+})
+
+
+
+if (!posts) {
+
+return res.json({
+
+success: false,
+
+})
+
+}
+
+
+
+return res.json({
+
+success: true,
+
+posts
+
+})
+
+} catch (error) {
+
+return res.json({
+
+success: false,
+
+message: "Internal server error"
+
+})
+
+}
+
+})
+
+
+
+postRouter.post('/filterPosts', [
+
+body("date").isString().withMessage("Date is required")
+
+], async (req, res) => {
+
+try {
+
+let errors = validationResult(req)
+
+if (!errors.isEmpty()) {
+
+return res.json({
+
+success: false,
+
+message: "Date is required",
+
+errors: errors.array()
+
+})
+
+}
+
+const { date } = req.body;
+
+const posts = await Post.find({
+
+createdAt: {
+
+$gte: new Date(date)
+
+}
+
+}).populate({
+
+path: "authorId",
+
+select: "username imageUrl"
+
+});
+
+
+
+if (!posts || posts.length === 0) {
+
+return res.json({
+
+success: false,
+
+message: "No posts found"
+
+});
+
+}
+
+
+
+return res.json({
+
+success: true,
+
+posts,
+
+});
+
+} catch (error) {
+
+return res.json({
+
+success: false,
+
+message: "Internal server error"
+
+})
+
+}
+
+})
+
+
 
 export default postRouter;
